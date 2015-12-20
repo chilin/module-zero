@@ -18,8 +18,8 @@ namespace Abp.Zero.SampleApp.Users
                                    {
                                        TenantId = null,
                                        UserName = input.UserName,
-                                       Name = input.Name,
-                                       Surname = input.Surname,
+                                       //Name = input.Name,
+                                       //Surname = input.Surname,
                                        EmailAddress = input.EmailAddress,
                                        IsEmailConfirmed = true,
                                        Password = "AM4OLBpptxBYmM79lGOX9egzZk3vIQU3d/gFCJzaBjAPXzYIK3tQ2N7X4fcrHtElTw==" //123qwe

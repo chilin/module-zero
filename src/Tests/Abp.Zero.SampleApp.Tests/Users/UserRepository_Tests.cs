@@ -18,8 +18,8 @@ namespace Abp.Zero.SampleApp.Tests.Users
             {
                 TenantId = null,
                 UserName = "admin",
-                Name = "System",
-                Surname = "Administrator",
+                //Name = "System",
+                //Surname = "Administrator",
                 EmailAddress = "admin@aspnetboilerplate.com",
                 IsEmailConfirmed = true,
                 Password = "AM4OLBpptxBYmM79lGOX9egzZk3vIQU3d/gFCJzaBjAPXzYIK3tQ2N7X4fcrHtElTw==" //123qwe

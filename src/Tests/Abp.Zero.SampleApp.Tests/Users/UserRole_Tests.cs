@@ -26,8 +26,8 @@ namespace Abp.Zero.SampleApp.Tests.Users
                                                   {
                                                       TenantId = AbpSession.TenantId,
                                                       UserName = "user1",
-                                                      Name = "User",
-                                                      Surname = "One",
+                                                      //Name = "User",
+                                                      //Surname = "One",
                                                       EmailAddress = "user-one@aspnetboilerplate.com",
                                                       IsEmailConfirmed = true,
                                                       Password = "AM4OLBpptxBYmM79lGOX9egzZk3vIQU3d/gFCJzaBjAPXzYIK3tQ2N7X4fcrHtElTw=="

@@ -77,19 +77,19 @@ namespace Abp.Authorization.Users
         [MaxLength(MaxAuthenticationSourceLength)]
         public virtual string AuthenticationSource { get; set; }
 
-        /// <summary>
-        /// Name of the user.
-        /// </summary>
-        [Required]
-        [StringLength(MaxNameLength)]
-        public virtual string Name { get; set; }
+        ///// <summary>
+        ///// Name of the user.
+        ///// </summary>
+        //[Required]
+        //[StringLength(MaxNameLength)]
+        //public virtual string Name { get; set; }
 
-        /// <summary>
-        /// Surname of the user.
-        /// </summary>
-        [Required]
-        [StringLength(MaxSurnameLength)]
-        public virtual string Surname { get; set; }
+        ///// <summary>
+        ///// Surname of the user.
+        ///// </summary>
+        //[Required]
+        //[StringLength(MaxSurnameLength)]
+        //public virtual string Surname { get; set; }
 
         /// <summary>
         /// Password of the user.
@@ -102,7 +102,7 @@ namespace Abp.Authorization.Users
         /// Email address of the user.
         /// Email address must be unique for it's tenant.
         /// </summary>
-        [Required]
+        //[Required]
         [StringLength(MaxEmailAddressLength)]
         public virtual string EmailAddress { get; set; }
 
