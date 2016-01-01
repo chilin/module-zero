@@ -1,18 +1,18 @@
-using Abp.Authorization;
+using Abp.Application.Features;
 using Abp.NHibernate.EntityMappings;
 
 namespace Abp.Zero.NHibernate.EntityMappings
 {
-    public abstract class PermissionSettingMap : EntityMap<PermissionSetting, long>
+    public class FeatureSettingMap : EntityMap<FeatureSetting, long>
     {
-        protected PermissionSettingMap()
-            : base("AbpPermissions")
+        public FeatureSettingMap()
+            : base("AbpFeatures")
         {
             DiscriminateSubClassesOnColumn("Discriminator");
 
             Map(x => x.Name);
-            Map(x => x.IsGranted);
-
+            Map(x => x.Value);
+            
             this.MapCreationAudited();
         }
     }
