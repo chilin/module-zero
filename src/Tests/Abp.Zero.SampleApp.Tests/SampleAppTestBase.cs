@@ -129,8 +129,8 @@ namespace Abp.Zero.SampleApp.Tests
                        {
                            TenantId = AbpSession.TenantId,
                            UserName = userName,
-                           Name = userName,
-                           Surname = userName,
+                           //Name = userName,
+                           //Surname = userName,
                            EmailAddress = userName + "@aspnetboilerplate.com",
                            IsEmailConfirmed = true,
                            Password = "AM4OLBpptxBYmM79lGOX9egzZk3vIQU3d/gFCJzaBjAPXzYIK3tQ2N7X4fcrHtElTw==" //123qwe

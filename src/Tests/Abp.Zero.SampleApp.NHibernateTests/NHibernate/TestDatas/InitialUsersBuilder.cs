@@ -29,8 +29,8 @@ namespace Abp.Zero.SampleApp.NHibernate.TestDatas
                 new User
                 {
                     TenantId = defaultTenant.Id,
-                    Name = "System",
-                    Surname = "Administrator",
+                    //Name = "System",
+                    //Surname = "Administrator",
                     UserName = User.AdminUserName,
                     Password = new PasswordHasher().HashPassword("123qwe"),
                     EmailAddress = "admin@aspnetboilerplate.com"

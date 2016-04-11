@@ -13,8 +13,8 @@ namespace Abp.Zero.NHibernate.EntityMappings
         {
             Map(x => x.TenantId);
             Map(x => x.UserName);
-            Map(x => x.Name);
-            Map(x => x.Surname);
+            //Map(x => x.Name);
+            //Map(x => x.Surname);
             Map(x => x.EmailAddress);
             Map(x => x.IsEmailConfirmed);
             Map(x => x.EmailConfirmationCode);

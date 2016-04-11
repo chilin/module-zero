@@ -28,8 +28,8 @@ namespace Abp.Zero.SampleApp.Tests.TestDatas
                 new User
                 {
                    TenantId = defaultTenant.Id,
-                   Name = "System",
-                   Surname = "Administrator",
+                   //Name = "System",
+                   //Surname = "Administrator",
                    UserName = User.AdminUserName,
                    Password = new PasswordHasher().HashPassword("123qwe"),
                    EmailAddress = "admin@aspnetboilerplate.com"
