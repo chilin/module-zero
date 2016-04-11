@@ -94,8 +94,8 @@ namespace Abp.Authorization.Users
         /// <summary>
         /// Return full name (Name Surname )
         /// </summary>
-        [NotMapped]
-        public virtual string FullName { get { return this.Name + " " + this.Surname; } }
+        //[NotMapped]
+        //public virtual string FullName { get { return this.Name + " " + this.Surname; } }
 
         /// <summary>
         /// Password of the user.
