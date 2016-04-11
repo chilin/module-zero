@@ -6,10 +6,13 @@ using Abp.Auditing;
 using Abp.Authorization;
 using Abp.Authorization.Roles;
 using Abp.Authorization.Users;
+using Abp.BackgroundJobs;
 using Abp.Configuration;
 using Abp.EntityFramework;
+using Abp.EntityFramework.Extensions;
 using Abp.Localization;
 using Abp.MultiTenancy;
+using Abp.Notifications;
 using Abp.Organizations;
 
 namespace Abp.Zero.EntityFramework
@@ -43,6 +46,11 @@ namespace Abp.Zero.EntityFramework
         public virtual IDbSet<UserLogin> UserLogins { get; set; }
 
         /// <summary>
+        /// User login attempts.
+        /// </summary>
+        public virtual IDbSet<UserLoginAttempt> UserLoginAttempts { get; set; }
+
+        /// <summary>
         /// User roles.
         /// </summary>
         public virtual IDbSet<UserRole> UserRoles { get; set; }
@@ -56,7 +64,7 @@ namespace Abp.Zero.EntityFramework
         /// Role permissions.
         /// </summary>
         public virtual IDbSet<RolePermissionSetting> RolePermissions { get; set; }
-        
+
         /// <summary>
         /// User permissions.
         /// </summary>
@@ -96,7 +104,7 @@ namespace Abp.Zero.EntityFramework
         /// Languages.
         /// </summary>
         public virtual IDbSet<ApplicationLanguage> Languages { get; set; }
-        
+
         /// <summary>
         /// LanguageTexts.
         /// </summary>
@@ -111,6 +119,26 @@ namespace Abp.Zero.EntityFramework
         /// UserOrganizationUnits.
         /// </summary>
         public virtual IDbSet<UserOrganizationUnit> UserOrganizationUnits { get; set; }
+
+        /// <summary>
+        /// Background jobs.
+        /// </summary>
+        public virtual IDbSet<BackgroundJobInfo> BackgroundJobs { get; set; }
+
+        /// <summary>
+        /// Notifications.
+        /// </summary>
+        public virtual IDbSet<NotificationInfo> Notifications { get; set; }
+
+        /// <summary>
+        /// User notifications.
+        /// </summary>
+        public virtual IDbSet<UserNotificationInfo> UserNotifications { get; set; }
+
+        /// <summary>
+        /// Notification subscriptions.
+        /// </summary>
+        public virtual IDbSet<NotificationSubscriptionInfo> NotificationSubscriptions { get; set; }
 
         /// <summary>
         /// Default constructor.
@@ -137,7 +165,88 @@ namespace Abp.Zero.EntityFramework
         protected AbpZeroDbContext(DbConnection dbConnection, bool contextOwnsConnection)
             : base(dbConnection, contextOwnsConnection)
         {
-            
+
+        }
+
+        protected override void OnModelCreating(DbModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            #region BackgroundJobInfo.IX_IsAbandoned_NextTryTime
+
+            modelBuilder.Entity<BackgroundJobInfo>()
+                .Property(j => j.IsAbandoned)
+                .CreateIndex("IX_IsAbandoned_NextTryTime", 1);
+
+            modelBuilder.Entity<BackgroundJobInfo>()
+                .Property(j => j.NextTryTime)
+                .CreateIndex("IX_IsAbandoned_NextTryTime", 2);
+
+            #endregion
+
+            #region NotificationSubscriptionInfo.IX_NotificationName_EntityTypeName_EntityId_UserId
+
+            modelBuilder.Entity<NotificationSubscriptionInfo>()
+                .Property(ns => ns.NotificationName)
+                .CreateIndex("IX_NotificationName_EntityTypeName_EntityId_UserId", 1);
+
+            modelBuilder.Entity<NotificationSubscriptionInfo>()
+                .Property(ns => ns.EntityTypeName)
+                .CreateIndex("IX_NotificationName_EntityTypeName_EntityId_UserId", 2);
+
+            modelBuilder.Entity<NotificationSubscriptionInfo>()
+                .Property(ns => ns.EntityId)
+                .CreateIndex("IX_NotificationName_EntityTypeName_EntityId_UserId", 3);
+
+            modelBuilder.Entity<NotificationSubscriptionInfo>()
+                .Property(ns => ns.UserId)
+                .CreateIndex("IX_NotificationName_EntityTypeName_EntityId_UserId", 4);
+
+            #endregion
+
+            #region UserNotificationInfo.IX_UserId_State_CreationTime
+
+            modelBuilder.Entity<UserNotificationInfo>()
+                .Property(un => un.UserId)
+                .CreateIndex("IX_UserId_State_CreationTime", 1);
+
+            modelBuilder.Entity<UserNotificationInfo>()
+                .Property(un => un.State)
+                .CreateIndex("IX_UserId_State_CreationTime", 2);
+
+            modelBuilder.Entity<UserNotificationInfo>()
+                .Property(un => un.CreationTime)
+                .CreateIndex("IX_UserId_State_CreationTime", 3);
+
+            #endregion
+
+            #region UserLoginAttempt.IX_TenancyName_UserNameOrEmailAddress_Result
+
+            modelBuilder.Entity<UserLoginAttempt>()
+                .Property(ula => ula.TenancyName)
+                .CreateIndex("IX_TenancyName_UserNameOrEmailAddress_Result", 1);
+
+            modelBuilder.Entity<UserLoginAttempt>()
+                .Property(ula => ula.UserNameOrEmailAddress)
+                .CreateIndex("IX_TenancyName_UserNameOrEmailAddress_Result", 2);
+
+            modelBuilder.Entity<UserLoginAttempt>()
+                .Property(ula => ula.Result)
+                .CreateIndex("IX_TenancyName_UserNameOrEmailAddress_Result", 3);
+
+            #endregion
+
+            #region UserLoginAttempt.IX_UserId_TenantId
+
+            modelBuilder.Entity<UserLoginAttempt>()
+                .Property(ula => ula.UserId)
+                .CreateIndex("IX_UserId_TenantId", 1);
+
+            modelBuilder.Entity<UserLoginAttempt>()
+                .Property(ula => ula.TenantId)
+                .CreateIndex("IX_UserId_TenantId", 2);
+
+            #endregion
         }
     }
 }

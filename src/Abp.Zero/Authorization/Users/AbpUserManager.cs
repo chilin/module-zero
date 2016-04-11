@@ -4,7 +4,9 @@ using System.Globalization;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using System.Transactions;
 using Abp.Application.Features;
+using Abp.Auditing;
 using Abp.Authorization.Roles;
 using Abp.Configuration;
 using Abp.Configuration.Startup;
@@ -54,6 +56,8 @@ namespace Abp.Authorization.Users
 
         public IAbpSession AbpSession { get; set; }
 
+        public IAuditInfoProvider AuditInfoProvider { get; set; }
+
         public FeatureDependencyContext FeatureDependencyContext { get; set; }
 
         protected AbpRoleManager<TTenant, TRole, TUser> RoleManager { get; private set; }
@@ -72,6 +76,7 @@ namespace Abp.Authorization.Users
         private readonly IRepository<OrganizationUnit, long> _organizationUnitRepository;
         private readonly IRepository<UserOrganizationUnit, long> _userOrganizationUnitRepository;
         private readonly IOrganizationUnitSettings _organizationUnitSettings;
+        private readonly IRepository<UserLoginAttempt, long> _userLoginAttemptRepository;
 
         protected AbpUserManager(
             AbpUserStore<TTenant, TRole, TUser> userStore,
@@ -86,7 +91,8 @@ namespace Abp.Authorization.Users
             ICacheManager cacheManager,
             IRepository<OrganizationUnit, long> organizationUnitRepository,
             IRepository<UserOrganizationUnit, long> userOrganizationUnitRepository,
-            IOrganizationUnitSettings organizationUnitSettings)
+            IOrganizationUnitSettings organizationUnitSettings,
+            IRepository<UserLoginAttempt, long> userLoginAttemptRepository)
             : base(userStore)
         {
             AbpStore = userStore;
@@ -102,8 +108,10 @@ namespace Abp.Authorization.Users
             _organizationUnitRepository = organizationUnitRepository;
             _userOrganizationUnitRepository = userOrganizationUnitRepository;
             _organizationUnitSettings = organizationUnitSettings;
+            _userLoginAttemptRepository = userLoginAttemptRepository;
 
             LocalizationManager = NullLocalizationManager.Instance;
+            AbpSession = NullAbpSession.Instance;
         }
 
         public override async Task<IdentityResult> CreateAsync(TUser user)
@@ -307,6 +315,13 @@ namespace Abp.Authorization.Users
         [UnitOfWork]
         public virtual async Task<AbpLoginResult> LoginAsync(UserLoginInfo login, string tenancyName = null)
         {
+            var result = await LoginAsyncInternal(login, tenancyName);
+            await SaveLoginAttempt(result, tenancyName, login.ProviderKey + "@" + login.LoginProvider);
+            return result;
+        }
+
+        private async Task<AbpLoginResult> LoginAsyncInternal(UserLoginInfo login, string tenancyName)
+        {
             if (login == null || login.LoginProvider.IsNullOrEmpty() || login.ProviderKey.IsNullOrEmpty())
             {
                 throw new ArgumentException("login");
@@ -328,7 +343,7 @@ namespace Abp.Authorization.Users
 
                 if (!tenant.IsActive)
                 {
-                    return new AbpLoginResult(AbpLoginResultType.TenantIsNotActive);
+                    return new AbpLoginResult(AbpLoginResultType.TenantIsNotActive, tenant);
                 }
             }
 
@@ -337,15 +352,22 @@ namespace Abp.Authorization.Users
                 var user = await AbpStore.FindAsync(tenant == null ? (int?)null : tenant.Id, login);
                 if (user == null)
                 {
-                    return new AbpLoginResult(AbpLoginResultType.UnknownExternalLogin);
+                    return new AbpLoginResult(AbpLoginResultType.UnknownExternalLogin, tenant);
                 }
 
-                return await CreateLoginResultAsync(user);
+                return await CreateLoginResultAsync(user, tenant);
             }
         }
 
         [UnitOfWork]
         public virtual async Task<AbpLoginResult> LoginAsync(string userNameOrEmailAddress, string plainPassword, string tenancyName = null)
+        {
+            var result = await LoginAsyncInternal(userNameOrEmailAddress, plainPassword, tenancyName);
+            await SaveLoginAttempt(result, tenancyName, userNameOrEmailAddress);
+            return result;
+        }
+
+        private async Task<AbpLoginResult> LoginAsyncInternal(string userNameOrEmailAddress, string plainPassword, string tenancyName = null)
         {
             if (userNameOrEmailAddress.IsNullOrEmpty())
             {
@@ -373,7 +395,7 @@ namespace Abp.Authorization.Users
 
                 if (!tenant.IsActive)
                 {
-                    return new AbpLoginResult(AbpLoginResultType.TenantIsNotActive);
+                    return new AbpLoginResult(AbpLoginResultType.TenantIsNotActive, tenant);
                 }
             }
 
@@ -384,7 +406,7 @@ namespace Abp.Authorization.Users
                 var user = await AbpStore.FindByNameOrEmailAsync(tenant == null ? (int?)null : tenant.Id, userNameOrEmailAddress);
                 if (user == null)
                 {
-                    return new AbpLoginResult(AbpLoginResultType.InvalidUserNameOrEmailAddress);
+                    return new AbpLoginResult(AbpLoginResultType.InvalidUserNameOrEmailAddress, tenant);
                 }
 
                 if (!loggedInFromExternalSource)
@@ -392,15 +414,15 @@ namespace Abp.Authorization.Users
                     var verificationResult = new PasswordHasher().VerifyHashedPassword(user.Password, plainPassword);
                     if (verificationResult != PasswordVerificationResult.Success)
                     {
-                        return new AbpLoginResult(AbpLoginResultType.InvalidPassword);
+                        return new AbpLoginResult(AbpLoginResultType.InvalidPassword, tenant, user);
                     }
                 }
 
-                return await CreateLoginResultAsync(user);
+                return await CreateLoginResultAsync(user, tenant);
             }
         }
 
-        private async Task<AbpLoginResult> CreateLoginResultAsync(TUser user)
+        private async Task<AbpLoginResult> CreateLoginResultAsync(TUser user, TTenant tenant = null)
         {
             if (!user.IsActive)
             {
@@ -418,7 +440,39 @@ namespace Abp.Authorization.Users
 
             await _unitOfWorkManager.Current.SaveChangesAsync();
 
-            return new AbpLoginResult(user, await CreateIdentityAsync(user, DefaultAuthenticationTypes.ApplicationCookie));
+            return new AbpLoginResult(tenant, user, await CreateIdentityAsync(user, DefaultAuthenticationTypes.ApplicationCookie));
+        }
+
+        private async Task SaveLoginAttempt(AbpLoginResult loginResult, string tenancyName, string userNameOrEmailAddress)
+        {
+            using (var uow = _unitOfWorkManager.Begin(TransactionScopeOption.Suppress))
+            {
+                var loginAttempt = new UserLoginAttempt
+                {
+                    TenantId = loginResult.Tenant != null ? loginResult.Tenant.Id : (int?)null,
+                    TenancyName = tenancyName,
+
+                    UserId = loginResult.User != null ? loginResult.User.Id : (long?)null,
+                    UserNameOrEmailAddress = userNameOrEmailAddress,
+
+                    Result = loginResult.Result,
+                };
+
+                //TODO: We should replace this workaround with IClientInfoProvider when it's implemented in ABP (https://github.com/aspnetboilerplate/aspnetboilerplate/issues/926)
+                if (AuditInfoProvider != null)
+                {
+                    var auditInfo = new AuditInfo();
+                    AuditInfoProvider.Fill(auditInfo);
+                    loginAttempt.BrowserInfo = auditInfo.BrowserInfo;
+                    loginAttempt.ClientIpAddress = auditInfo.ClientIpAddress;
+                    loginAttempt.ClientName = auditInfo.ClientName;
+                }
+
+                await _userLoginAttemptRepository.InsertAsync(loginAttempt);
+
+                await _unitOfWorkManager.Current.SaveChangesAsync();
+                await uow.CompleteAsync();
+            }
         }
 
         private async Task<bool> TryLoginFromExternalAuthenticationSources(string userNameOrEmailAddress, string plainPassword, TTenant tenant)
@@ -782,17 +836,21 @@ namespace Abp.Authorization.Users
         {
             public AbpLoginResultType Result { get; private set; }
 
+            public TTenant Tenant { get; private set; }
+
             public TUser User { get; private set; }
 
             public ClaimsIdentity Identity { get; private set; }
 
-            public AbpLoginResult(AbpLoginResultType result)
+            public AbpLoginResult(AbpLoginResultType result, TTenant tenant = null, TUser user = null)
             {
                 Result = result;
+                Tenant = tenant;
+                User = user;
             }
 
-            public AbpLoginResult(TUser user, ClaimsIdentity identity)
-                : this(AbpLoginResultType.Success)
+            public AbpLoginResult(TTenant tenant, TUser user, ClaimsIdentity identity)
+                : this(AbpLoginResultType.Success, tenant)
             {
                 User = user;
                 Identity = identity;
